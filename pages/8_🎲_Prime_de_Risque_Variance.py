@@ -3,7 +3,7 @@ import numpy as np
 import streamlit as st
 from scipy.stats import skew as scipy_skew
 
-from utils.state import require_data, push_score, lesson
+from utils.state import require_data, push_score, lesson, keypoints
 from engine.core import svi_implied_vol
 from engine.strategy import vrp_monte_carlo
 from engine import viz
@@ -96,13 +96,13 @@ st.info("📌 L'**asymétrie négative est le coût de la prime** : la plupart d
         "réussite élevé avec une queue gauche épaisse est la signature de la vente "
         "d'assurance.")
 
-with st.expander("💬 Ce qu'un recruteur demande ici"):
-    st.markdown(
-        "- **Pourquoi la moyenne est positive ?** La vol implicite embarque une "
-        "prime de risque sur la réalisée — les vendeurs sont payés pour stocker le "
-        "risque de variance.\n"
-        "- **Pourquoi modéliser une vol réalisée stochastique + des sauts ?** Un MC "
-        "à vol constante cache la queue ; la prime n'a de sens que face au risque "
-        "de blow-up qu'elle rémunère.\n"
-        "- **Comment dimensionner ça ?** Contre la queue 1–5% (CVaR), pas la "
-        "moyenne — la queue gauche est ce qui te stoppe.")
+keypoints(
+    "- La **moyenne est positive** car la vol implicite embarque une prime de risque "
+    "sur la réalisée — les vendeurs sont payés pour stocker le risque de variance.\n"
+    "- On modélise une **vol réalisée stochastique + des sauts** car un MC à vol "
+    "constante cacherait la queue ; la prime n'a de sens que face au risque de "
+    "blow-up qu'elle rémunère.\n"
+    "- On **dimensionne contre la queue 1–5 % (CVaR)**, pas la moyenne : la queue "
+    "gauche est ce qui te stoppe.\n"
+    "- Taux de réussite élevé **+** queue gauche épaisse = signature de la **vente "
+    "d'assurance**.")

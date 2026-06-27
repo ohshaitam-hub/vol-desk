@@ -5,7 +5,7 @@ toutes les autres pages, et affiche les KPI de la surface comme « hero ».
 """
 import streamlit as st
 
-from utils.state import render_sidebar, load_data, source_badge, lesson
+from utils.state import render_sidebar, load_data, source_badge, lesson, keypoints
 
 st.set_page_config(layout="wide", page_title="Vol Desk", page_icon="📈")
 
@@ -109,16 +109,14 @@ cols = ["expiry_dte", "type", "strike", "log_moneyness", "VI_%", "mid",
 st.dataframe(show[cols].round({"log_moneyness": 4, "mid": 2, "bid": 2, "ask": 2}),
              use_container_width=True, height=380)
 
-with st.expander("💬 Ce qu'un recruteur demande ici"):
-    st.markdown(
-        "- **Pourquoi le log-moneyness vs le forward, pas le strike ?** Il "
-        "standardise les smiles entre maturités et centre l'ATM en `k=0` (le "
-        "forward, pas le spot).\n"
-        "- **Pourquoi un repli synthétique ?** Un recruteur doit pouvoir ouvrir "
-        "l'app sans aucune clé API et voir une surface complète et sans arbitrage.\n"
-        "- **Qu'a retiré le nettoyage ?** Les quotes croisées/périmées, les ailes "
-        "illiquides, et tout prix hors des bornes de non-arbitrage (le solveur de "
-        "VI renvoie NaN dans ce cas).")
+keypoints(
+    "- Le **log-moneyness `ln(K/F)`** (vs le forward, pas le strike) standardise les "
+    "smiles entre maturités et centre l'ATM en `k=0`.\n"
+    "- Le **repli synthétique** garantit que l'app tourne **sans aucune clé API** — "
+    "essentiel pour une démo.\n"
+    "- Le **nettoyage** retire les quotes croisées/périmées, les ailes illiquides, et "
+    "tout prix hors des bornes de non-arbitrage (le solveur de VI renvoie alors NaN).\n"
+    "- Tout part de cette page : la **surface** construite ici alimente toutes les autres.")
 
 with st.expander("🔭 Là où un desk pousse ça plus loin"):
     st.markdown(

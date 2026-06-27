@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from utils.state import require_data, get_score, lesson
+from utils.state import require_data, get_score, lesson, keypoints
 from engine.core import svi_implied_vol
 from engine.strategy import (avellaneda_stoikov_quotes, simulate_market_making,
                              relative_value_screen, vrp_monte_carlo)
@@ -118,14 +118,12 @@ g2[3].metric("VRP moy (réussite%)", f"{sc.get('vrp_mean', 0):+.2f} ({sc.get('vr
 st.caption(f"Queue 5% VRP : {sc.get('vrp_tail5', float('nan')):+.2f}  ·  "
            "Le scorecard agrège chaque module précédent via `st.session_state`.")
 
-with st.expander("💬 Ce qu'un recruteur demande ici"):
-    st.markdown(
-        "- **Qu'est-ce que le prix de réserve ?** La juste valeur ajustée de "
-        "l'inventaire à laquelle le MM est *indifférent* à trader : "
-        "`r = s − q·γ·σ²·(T−t)`.\n"
-        "- **Pourquoi incliner les cotes ?** Pour faire mean-reverter l'inventaire "
-        "— un book long abaisse ses deux cotes pour être pris à l'offre et moins "
-        "levé au bid.\n"
-        "- **Qu'est-ce qui fixe la fourchette optimale ?** `γσ²(T−t) + "
-        "(2/γ)ln(1+γ/κ)` — l'aversion au risque et l'horizon l'élargissent ; une "
-        "liquidité plus profonde (κ) la resserre.")
+keypoints(
+    "- Le **prix de réserve** est la juste valeur ajustée de l'inventaire à laquelle "
+    "le MM est *indifférent* à trader : `r = s − q·γ·σ²·(T−t)`.\n"
+    "- On **incline les cotes** pour faire mean-reverter l'inventaire : un book long "
+    "abaisse ses deux cotes pour être pris à l'offre et moins levé au bid.\n"
+    "- La **fourchette optimale** = `γσ²(T−t) + (2/γ)ln(1+γ/κ)` : l'aversion au risque "
+    "et l'horizon l'élargissent, une liquidité plus profonde (κ) la resserre.\n"
+    "- Objectif d'un MM : gagner la fourchette **tout en gardant l'inventaire proche "
+    "de zéro**.")

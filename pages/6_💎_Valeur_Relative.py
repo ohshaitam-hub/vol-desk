@@ -1,7 +1,7 @@
 """Page 6 · Valeur relative — repérer les options chères/bon marché vs la surface."""
 import streamlit as st
 
-from utils.state import require_data, push_score, lesson
+from utils.state import require_data, push_score, lesson, keypoints
 from engine.strategy import relative_value_screen
 from engine import viz
 
@@ -69,13 +69,12 @@ st.dataframe(
     .round({"log_moneyness": 4, "iv_resid": 4, "iv_zscore": 2}),
     use_container_width=True, height=340)
 
-with st.expander("💬 Ce qu'un recruteur demande ici"):
-    st.markdown(
-        "- **Pourquoi un z-score au sein de chaque échéance ?** Skew/niveau "
-        "diffèrent selon la maturité ; standardiser par slice rend 'cher' "
-        "comparable sur toute la surface.\n"
-        "- **Un z-score élevé est-il un trade ?** Non — c'est un *candidat*. On "
-        "vérifie liquidité, emprunt, événements et coût de couverture avant de "
-        "s'appuyer dessus.\n"
-        "- **D'où vient l'edge ?** De coter autour d'une surface juste propre et "
-        "d'être payé pour fournir de la liquidité au flux qui s'en écarte.")
+keypoints(
+    "- On standardise **par échéance** (z-score par slice) car skew et niveau "
+    "diffèrent selon la maturité — ça rend « cher » comparable sur toute la surface.\n"
+    "- Un z-score élevé est un **candidat**, pas un trade : on vérifie d'abord "
+    "liquidité, événements et coût de couverture.\n"
+    "- L'**edge** vient de coter autour d'une surface juste propre et d'être payé "
+    "pour fournir de la liquidité au flux qui s'en écarte.\n"
+    "- Baisser le **seuil z** augmente le nombre de signaux mais aussi les faux "
+    "positifs.")

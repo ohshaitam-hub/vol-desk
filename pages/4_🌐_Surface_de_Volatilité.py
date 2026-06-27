@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from utils.state import require_data, lesson
+from utils.state import require_data, lesson, keypoints
 from engine.core import calibrate_svi, svi_implied_vol
 from engine import viz
 
@@ -89,12 +89,13 @@ if disp:
 else:
     st.info("Sélectionne au moins une échéance.")
 
-with st.expander("💬 Ce qu'un recruteur demande ici"):
-    st.markdown(
-        "- **Pourquoi SVI et pas une spline ?** SVI est parcimonieux (5 paramètres), "
-        "a une forme propre en variance totale, et des conditions de non-arbitrage "
-        "connues — les splines sur-ajustent et arbitragent facilement.\n"
-        "- **Que fait chaque paramètre ?** `a` niveau, `b` pente des ailes, `ρ` "
-        "skew, `m` translation horizontale, `σ` courbure ATM.\n"
-        "- **Pourquoi multi-départs ?** La surface des moindres carrés SVI est "
-        "non-convexe ; des redémarrages aléatoires évitent les mauvais minima locaux.")
+keypoints(
+    "- **SVI** (5 paramètres) est préféré à une spline : parcimonieux, forme propre "
+    "en variance totale, conditions de non-arbitrage connues — une spline sur-ajuste "
+    "et arbitrage facilement.\n"
+    "- Les **5 paramètres** : `a` niveau, `b` pente des ailes, `ρ` skew, `m` "
+    "translation horizontale, `σ` courbure ATM.\n"
+    "- Le **multi-départs** est nécessaire car la surface des moindres carrés SVI est "
+    "non-convexe (sinon on tombe dans de mauvais minima locaux).\n"
+    "- Un **RMSE faible** (< 0,5 point de vol) indique que le modèle colle bien au "
+    "marché.")

@@ -1,7 +1,7 @@
 """Page 5 · Non-arbitrage & densité risque-neutre — prouver que la surface est négociable."""
 import streamlit as st
 
-from utils.state import require_data, push_score, lesson
+from utils.state import require_data, push_score, lesson, keypoints
 from engine.data import surface_diagnostics, calendar_arbitrage
 from engine import viz
 
@@ -73,13 +73,13 @@ if len(cal):
 else:
     st.info("Il faut au moins deux échéances pour le contrôle calendaire.")
 
-with st.expander("💬 Ce qu'un recruteur demande ici"):
-    st.markdown(
-        "- **Breeden–Litzenberger ?** `f(K)=e^{rT}·∂²C/∂K²` — la dérivée seconde "
-        "du prix du call par rapport au strike *est* la densité risque-neutre. "
-        "Négative quelque part ⇒ un papillon vendable gratuitement.\n"
-        "- **Condition calendaire ?** La variance totale `w(k,T)` doit être "
-        "non-décroissante en T à chaque k, sinon un spread calendaire est un "
-        "arbitrage.\n"
-        "- **Pourquoi le prouver avant de trader ?** Des signaux de valeur "
-        "relative sur une surface qui arbitre n'ont aucun sens.")
+keypoints(
+    "- **Breeden–Litzenberger** : `f(K)=e^{rT}·∂²C/∂K²` — la dérivée seconde du prix "
+    "du call par rapport au strike *est* la densité risque-neutre. Négative quelque "
+    "part ⇒ un papillon vendable gratuitement.\n"
+    "- **Condition calendaire** : la variance totale `w(k,T)` doit être "
+    "non-décroissante en T à chaque k, sinon un spread calendaire est un arbitrage.\n"
+    "- On le **prouve avant de trader** : des signaux de valeur relative calculés sur "
+    "une surface qui arbitre n'ont aucun sens.\n"
+    "- Tout ✅ + 0 violation = surface **négociable** ; le moindre ❌ invaliderait "
+    "les pages suivantes.")

@@ -1,7 +1,7 @@
 """Page 7 · P&L delta-couvert — l'économie de la vente de vol et de la couverture delta."""
 import streamlit as st
 
-from utils.state import require_data, lesson
+from utils.state import require_data, lesson, keypoints
 from engine.core import svi_implied_vol
 from engine.strategy import simulate_delta_hedged_pnl
 from engine import viz
@@ -77,13 +77,11 @@ k[5].metric("P&L total", f"{attr['total_pnl']:+.2f}")
 st.plotly_chart(viz.pnl_waterfall(attr), use_container_width=True)
 st.plotly_chart(viz.hedge_path(path), use_container_width=True)
 
-with st.expander("💬 Ce qu'un recruteur demande ici"):
-    st.markdown(
-        "- **D'où vient le P&L short-vol ?** On encaisse le theta à chaque pas et "
-        "on paie `½·Γ·(ΔS)²` à chaque mouvement. Si implicite > réalisée, le theta "
-        "l'emporte en moyenne.\n"
-        "- **Qu'est-ce que l'erreur de couverture ?** Le coût de couvrir "
-        "discrètement plutôt qu'en continu — elle diminue quand on re-hedge plus "
-        "souvent (et qu'on paie plus de coûts).\n"
-        "- **Pourquoi le P&L vega est ~0 ici ?** La marque implicite est fixe ; le "
-        "vega ne mord que si on bouge aussi la surface (un risque séparé).")
+keypoints(
+    "- Le **P&L short-vol** = theta encaissé à chaque pas − `½·Γ·(ΔS)²` payé à chaque "
+    "mouvement. Si implicite > réalisée, le theta l'emporte en moyenne.\n"
+    "- L'**erreur de couverture** est le coût de se couvrir discrètement (pas en "
+    "continu) ; elle diminue quand on re-hedge plus souvent.\n"
+    "- Le **P&L vega ≈ 0** ici car la marque implicite est fixe : le vega ne mord que "
+    "si on bouge aussi la surface (un risque séparé).\n"
+    "- C'est le **pari fondamental** d'un vendeur de vol : implicite vs réalisée.")

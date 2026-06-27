@@ -1,7 +1,7 @@
 """Page 3 · Volatilité implicite — inversion des prix marché et smiles bruts."""
 import streamlit as st
 
-from utils.state import require_data, lesson
+from utils.state import require_data, lesson, keypoints
 from engine.core import implied_vol
 from engine import viz
 
@@ -68,13 +68,13 @@ iv_calc = implied_vol(px, spot, strike, T_in, r, q, typ)
 st.metric("Volatilité implicite",
           f"{iv_calc*100:.2f}%" if iv_calc == iv_calc else "n/a (hors bornes de non-arbitrage)")
 
-with st.expander("💬 Ce qu'un recruteur demande ici"):
-    st.markdown(
-        "- **Pourquoi la VI peut-elle être NaN ?** Le prix violait les bornes de "
-        "non-arbitrage (sous l'intrinsèque / au-dessus du sous-jacent actualisé) "
-        "ou la racine n'était pas encadrée — le solveur refuse d'inventer une vol "
-        "à partir d'une mauvaise quote.\n"
-        "- **Pourquoi le prix mid ?** Le bid et l'ask embarquent chacun une "
-        "fourchette ; le mid est le point unique le moins biaisé pour l'inversion.\n"
-        "- **Smile vs skew ?** Les indices actions montrent un skew baissier (puts "
-        "OTM recherchés pour la protection) ; un U symétrique est un 'smile'.")
+keypoints(
+    "- La **VI peut être NaN** quand le prix viole les bornes de non-arbitrage (sous "
+    "l'intrinsèque / au-dessus du sous-jacent actualisé) : le solveur refuse "
+    "d'inventer une vol à partir d'une mauvaise quote.\n"
+    "- On inverse le **prix mid** : c'est le point le moins biaisé (le bid et l'ask "
+    "embarquent chacun une demi-fourchette).\n"
+    "- Les indices actions montrent un **skew baissier** : les puts OTM (protection) "
+    "sont plus chers ; un U symétrique serait un *smile*.\n"
+    "- La VI **n'est pas** la vol future réalisée : c'est l'anticipation du marché, "
+    "prime de risque incluse.")

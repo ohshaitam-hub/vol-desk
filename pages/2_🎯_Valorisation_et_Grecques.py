@@ -1,7 +1,7 @@
 """Page 2 · Valorisation & Grecques — pricer Black–Scholes interactif et intuition des Grecques."""
 import streamlit as st
 
-from utils.state import require_data, lesson
+from utils.state import require_data, lesson, keypoints
 from engine.core import bs_price, bs_greeks
 from engine import viz
 
@@ -63,12 +63,12 @@ if st.toggle("Afficher le payoff à l'échéance"):
     st.plotly_chart(viz.payoff_at_expiry(K, option, S, premium=price,
                     position=1.0), use_container_width=True)
 
-with st.expander("💬 Ce qu'un recruteur demande ici"):
-    st.markdown(
-        "- **Signe du theta vs gamma ?** Une option longue est longue gamma / "
-        "courte theta — on paie la décote temporelle pour détenir la convexité. "
-        "Le short inverse les deux.\n"
-        "- **Pourquoi le vega est-il maximal ATM et pour les longues maturités ?** "
-        "Vega ∝ S·φ(d1)·√T, maximal près du forward et croissant en √T.\n"
-        "- **Theta par jour ?** Le moteur renvoie un theta annuel ; on divise par "
-        "365 pour le saignement quotidien que regarde un trader.")
+keypoints(
+    "- Une option **longue** est *longue gamma / courte theta* : on paie la décote du "
+    "temps pour détenir la convexité ; le **short** inverse les deux.\n"
+    "- Le **vega** est maximal **ATM** et croît en **√T** : les longues maturités sont "
+    "plus sensibles à la volatilité.\n"
+    "- Le **theta** affiché est annuel ; divisé par 365 il donne le saignement "
+    "**quotidien** que surveille un trader.\n"
+    "- **Gamma** et **vega** sont toujours positifs pour une option longue, négatifs "
+    "pour une option vendue.")

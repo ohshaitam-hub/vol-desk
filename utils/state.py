@@ -19,6 +19,59 @@ def _ensure_defaults():
 
 
 # ----------------------------------------------------------------------
+# Refonte visuelle — CSS global injecté sur chaque page
+# ----------------------------------------------------------------------
+_THEME_CSS = """
+<style>
+:root{
+  --vd-panel:#121826; --vd-border:#1f2a3d; --vd-accent:#58a6ff;
+  --vd-accent2:#7c5cff; --vd-mute:#8b98ad; --vd-buy:#3fb950; --vd-sell:#f0617a;
+}
+.stApp{ background:
+  radial-gradient(1200px 620px at 18% -12%, rgba(88,166,255,0.10) 0%, rgba(13,17,23,0) 46%),
+  radial-gradient(900px 500px at 100% 0%, rgba(124,92,255,0.08) 0%, rgba(13,17,23,0) 42%),
+  #0d1117 fixed; }
+.block-container{ padding-top:2.2rem; max-width:1320px; }
+h1{ font-weight:700; letter-spacing:-0.02em; }
+h2,h3{ font-weight:600; letter-spacing:-0.01em; color:#dbe7ff; }
+hr{ border-color:var(--vd-border); }
+code{ color:#9fc6ff; background:rgba(88,166,255,0.10); border-radius:5px; padding:0 4px; }
+
+/* Cartes de KPI */
+div[data-testid="stMetric"]{
+  background:linear-gradient(180deg, rgba(88,166,255,0.07), rgba(18,24,38,0.55));
+  border:1px solid var(--vd-border); border-radius:14px; padding:12px 16px; }
+div[data-testid="stMetricValue"]{ color:#d6e7ff; font-weight:700; }
+div[data-testid="stMetricLabel"] p{ color:var(--vd-mute); font-weight:500; }
+
+/* Boutons */
+.stButton>button, .stDownloadButton>button{
+  background:linear-gradient(90deg,var(--vd-accent),var(--vd-accent2));
+  color:#fff; border:0; border-radius:10px; font-weight:600; }
+.stButton>button:hover, .stDownloadButton>button:hover{ filter:brightness(1.12); color:#fff; border:0; }
+
+/* Encadrés (mini-cours, points clés) */
+div[data-testid="stExpander"]{
+  border:1px solid var(--vd-border)!important; border-left:3px solid var(--vd-accent)!important;
+  border-radius:12px!important; background:rgba(18,24,38,0.55); }
+div[data-testid="stExpander"] summary{ font-weight:600; }
+
+/* Sidebar */
+section[data-testid="stSidebar"]{ background:#0b101a; border-right:1px solid var(--vd-border); }
+
+/* Tableaux & alertes arrondis */
+div[data-testid="stDataFrame"]{ border:1px solid var(--vd-border); border-radius:12px; overflow:hidden; }
+div[data-testid="stAlert"]{ border-radius:12px; border:1px solid var(--vd-border); }
+div[data-baseweb="tab-list"]{ gap:4px; }
+</style>
+"""
+
+
+def inject_theme():
+    st.markdown(_THEME_CSS, unsafe_allow_html=True)
+
+
+# ----------------------------------------------------------------------
 # Cached engine calls — page switches stay instant
 # ----------------------------------------------------------------------
 @st.cache_data(show_spinner=False)
@@ -63,6 +116,7 @@ def load_data():
 def render_sidebar():
     """Dessine la config globale persistante. Chaque page l'appelle en premier."""
     _ensure_defaults()
+    inject_theme()
     sb = st.sidebar
     sb.markdown("## 📈 Vol Desk")
     sb.caption("Cockpit volatilité options & tenue de marché")
@@ -117,4 +171,10 @@ def lesson(body: str, title: str = "📚 Comprendre cette page (mini-cours)",
     techniques — pour pouvoir utiliser l'app sans bagage préalable.
     """
     with st.expander(title, expanded=expanded):
+        st.markdown(body)
+
+
+def keypoints(body: str, title: str = "💡 Points clés à retenir"):
+    """Encadré « points importants à savoir » (remplace l'ancien bloc recruteur)."""
+    with st.expander(title, expanded=False):
         st.markdown(body)
