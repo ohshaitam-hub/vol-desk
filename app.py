@@ -1,7 +1,7 @@
 """
-app.py — VOL DESK · Page 1 · Market Data & Cockpit Home
-Landing page: orients the user, loads the data foundation every other page
-depends on, and shows the live surface KPIs as the cockpit "hero".
+app.py — VOL DESK · Page 1 · Données de marché & Accueil du cockpit
+Page d'accueil : oriente l'utilisateur, charge les données dont dépendent
+toutes les autres pages, et affiche les KPI de la surface comme « hero ».
 """
 import streamlit as st
 
@@ -11,10 +11,11 @@ st.set_page_config(layout="wide", page_title="Vol Desk", page_icon="📈")
 
 render_sidebar()
 
-# Auto-load on first visit so the cockpit is populated immediately (synthetic
-# fallback guarantees this never blocks, even with no network / no API keys).
+# Chargement automatique à la première visite pour que le cockpit soit peuplé
+# immédiatement (le repli synthétique garantit que ça ne bloque jamais, même
+# sans réseau ni clé API).
 if not st.session_state.get("data_ready"):
-    with st.spinner("Loading market data & fitting the volatility surface…"):
+    with st.spinner("Chargement des données & calibration de la surface de volatilité…"):
         load_data()
 
 meta = st.session_state["meta"]
@@ -24,75 +25,80 @@ surface = st.session_state["surface"]
 # ----------------------------------------------------------------------
 # Hero
 # ----------------------------------------------------------------------
-st.title("📈 Vol Desk — Options Volatility & Market-Making Cockpit")
+st.title("📈 Vol Desk — Cockpit Volatilité Options & Tenue de Marché")
 st.markdown(
-    "An end-to-end options-research desk: it pulls an options chain, builds an "
-    "**arbitrage-free SVI volatility surface**, validates it, screens **relative "
-    "value**, simulates **delta-hedged P&L** and the **variance risk premium**, and "
-    "quotes as an **Avellaneda–Stoikov market maker**. Live Yahoo Finance when "
-    "available, deterministic synthetic surface otherwise — it always runs.")
+    "Un desk de recherche options de bout en bout : il récupère une chaîne "
+    "d'options, construit une **surface de volatilité SVI sans arbitrage**, la "
+    "valide, screene la **valeur relative**, simule le **P&L delta-couvert** et la "
+    "**prime de risque de variance**, puis cote en **teneur de marché Avellaneda–"
+    "Stoikov**. Yahoo Finance en direct si disponible, surface synthétique "
+    "déterministe sinon — l'app tourne toujours.")
 
-st.markdown(f"**Data source:** {source_badge()}  ·  "
-            f"as-of `{meta['asof']:%Y-%m-%d %H:%M UTC}`")
+st.markdown(f"**Source des données :** {source_badge()}  ·  "
+            f"arrêtée au `{meta['asof']:%Y-%m-%d %H:%M UTC}`")
 
 # ----------------------------------------------------------------------
-# 9-step workflow map
+# Parcours en 9 étapes
 # ----------------------------------------------------------------------
-st.subheader("Workflow")
+st.subheader("Parcours")
 dot = """
 digraph {
   rankdir=LR; bgcolor="#0d1117";
   node [shape=box style="rounded,filled" fillcolor="#161b22" color="#283039"
         fontcolor="#e6edf3" fontname="monospace" fontsize=10 margin=0.12];
   edge [color="#58a6ff" arrowsize=0.7];
-  d1 [label="1 · Market Data"]; d2 [label="2 · Pricing & Greeks"];
-  d3 [label="3 · Implied Vol"]; d4 [label="4 · Vol Surface (SVI)"];
-  d5 [label="5 · No-Arbitrage"]; d6 [label="6 · Relative Value"];
-  d7 [label="7 · Delta-Hedged P&L"]; d8 [label="8 · Variance Risk Prem."];
-  d9 [label="9 · Market Making"];
+  d1 [label="1 · Donnees de marche"]; d2 [label="2 · Valorisation & Grecques"];
+  d3 [label="3 · Vol implicite"]; d4 [label="4 · Surface de vol (SVI)"];
+  d5 [label="5 · Non-arbitrage"]; d6 [label="6 · Valeur relative"];
+  d7 [label="7 · P&L delta-couvert"]; d8 [label="8 · Prime risque variance"];
+  d9 [label="9 · Tenue de marche"];
   d1->d2->d3->d4->d5->d6->d7->d8->d9;
 }
 """
 st.graphviz_chart(dot, use_container_width=True)
 
 # ----------------------------------------------------------------------
-# KPI row
+# Ligne de KPI
 # ----------------------------------------------------------------------
 c = st.columns(4)
 c[0].metric("Spot", f"{meta['spot']:.2f}")
-c[1].metric("# expiries fitted", len(surface))
-c[2].metric("# clean quotes", len(iv_panel))
-c[3].metric("Source", "Live" if meta["source"].startswith("yfinance") else "Synthetic")
+c[1].metric("# échéances ajustées", len(surface))
+c[2].metric("# quotes propres", len(iv_panel))
+c[3].metric("Source", "Réel" if meta["source"].startswith("yfinance") else "Synthétique")
 
 # ----------------------------------------------------------------------
-# Cleaned IV panel
+# Panel de volatilité implicite nettoyé
 # ----------------------------------------------------------------------
-st.subheader("Cleaned implied-vol panel")
-st.caption("Mid-price implied vol and log-moneyness ln(K/F) for every surviving "
-           "option after liquidity & no-arbitrage filtering.")
+st.subheader("Panel de volatilité implicite (nettoyé)")
+st.caption("Volatilité implicite au mid et log-moneyness ln(K/F) pour chaque "
+           "option survivant aux filtres de liquidité et de non-arbitrage.")
 show = iv_panel.copy()
-show["iv_%"] = (show["iv"] * 100).round(2)
-cols = ["expiry_dte", "type", "strike", "log_moneyness", "iv_%", "mid",
+show["VI_%"] = (show["iv"] * 100).round(2)
+cols = ["expiry_dte", "type", "strike", "log_moneyness", "VI_%", "mid",
         "bid", "ask", "volume", "open_interest"]
 st.dataframe(show[cols].round({"log_moneyness": 4, "mid": 2, "bid": 2, "ask": 2}),
              use_container_width=True, height=380)
 
-with st.expander("💬 What an interviewer asks here"):
+with st.expander("💬 Ce qu'un recruteur demande ici"):
     st.markdown(
-        "- **Why log-moneyness vs the forward, not strike?** It standardises smiles "
-        "across maturities and centres ATM at `k=0` (the forward, not spot).\n"
-        "- **Why a synthetic fallback?** A recruiter must be able to open the app "
-        "with no API keys and still see a full, arbitrage-free surface.\n"
-        "- **What did the cleaning remove?** Crossed/stale quotes, illiquid wings, "
-        "and any price outside no-arbitrage bounds (the IV solver returns NaN there).")
+        "- **Pourquoi le log-moneyness vs le forward, pas le strike ?** Il "
+        "standardise les smiles entre maturités et centre l'ATM en `k=0` (le "
+        "forward, pas le spot).\n"
+        "- **Pourquoi un repli synthétique ?** Un recruteur doit pouvoir ouvrir "
+        "l'app sans aucune clé API et voir une surface complète et sans arbitrage.\n"
+        "- **Qu'a retiré le nettoyage ?** Les quotes croisées/périmées, les ailes "
+        "illiquides, et tout prix hors des bornes de non-arbitrage (le solveur de "
+        "VI renvoie NaN dans ce cas).")
 
-with st.expander("🔭 Where a desk takes this next"):
+with st.expander("🔭 Là où un desk pousse ça plus loin"):
     st.markdown(
-        "- **SSVI / eSSVI** global calibration enforcing no static arbitrage across "
-        "the *whole* surface (not slice-by-slice).\n"
-        "- **Heston / SABR** cross-check and vega hedging **with transaction costs**.\n"
-        "- A **live broker feed** (IBKR / Polygon) with Greek & inventory risk limits.\n"
-        "- A **multi-name dispersion / skew scanner** with out-of-sample validation.")
+        "- Calibration globale **SSVI / eSSVI** garantissant l'absence d'arbitrage "
+        "statique sur *toute* la surface (pas slice par slice).\n"
+        "- Cross-check **Heston / SABR** et couverture vega **avec coûts de "
+        "transaction**.\n"
+        "- Un **flux broker en direct** (IBKR / Polygon) avec limites de risque "
+        "Greeks & inventaire.\n"
+        "- Un **scanner dispersion / skew multi-noms** avec validation hors-échantillon.")
 
-st.caption("Navigate the 8 analytical modules from the sidebar →. "
-           "This cockpit is the live counterpart of the research notebook (the lab).")
+st.caption("Navigue les 8 modules analytiques depuis la barre latérale →. "
+           "Ce cockpit est la version live du notebook de recherche (le labo).")

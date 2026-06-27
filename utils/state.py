@@ -61,42 +61,42 @@ def load_data():
 
 
 def render_sidebar():
-    """Draw the persistent global config. Every page calls this first."""
+    """Dessine la config globale persistante. Chaque page l'appelle en premier."""
     _ensure_defaults()
     sb = st.sidebar
     sb.markdown("## 📈 Vol Desk")
-    sb.caption("Options vol & market-making cockpit")
+    sb.caption("Cockpit volatilité options & tenue de marché")
     sb.markdown("---")
-    sb.markdown("### ⚙️ Global config")
+    sb.markdown("### ⚙️ Configuration globale")
     sb.text_input("Ticker", key="cfg_ticker")
-    sb.number_input("Risk-free rate  r", min_value=0.0, max_value=0.25,
+    sb.number_input("Taux sans risque  r", min_value=0.0, max_value=0.25,
                     step=0.005, format="%.3f", key="cfg_r")
-    sb.number_input("Dividend yield  q", min_value=0.0, max_value=0.25,
+    sb.number_input("Rendement dividende  q", min_value=0.0, max_value=0.25,
                     step=0.005, format="%.3f", key="cfg_q")
-    sb.slider("Max expiries", 3, 12, key="cfg_max_expiries")
-    sb.slider("RV z-threshold", 0.5, 3.0, step=0.1, key="cfg_z_threshold")
-    if sb.button("🔄 Load / Refresh data", use_container_width=True, type="primary"):
+    sb.slider("Échéances max", 3, 12, key="cfg_max_expiries")
+    sb.slider("Seuil z (valeur relative)", 0.5, 3.0, step=0.1, key="cfg_z_threshold")
+    if sb.button("🔄 Charger / Rafraîchir", use_container_width=True, type="primary"):
         load_data()
-        sb.success("Data reloaded.")
+        sb.success("Données rechargées.")
     sb.markdown("---")
-    sb.markdown(f"**Status:** {source_badge()}")
+    sb.markdown(f"**Statut :** {source_badge()}")
 
 
 def source_badge() -> str:
     if not st.session_state.get("data_ready"):
-        return "⚪ no data — press Load"
+        return "⚪ aucune donnée — clique Charger"
     src = st.session_state["meta"]["source"]
     return f"🟢 `{src}`" if src.startswith("yfinance") else f"🟡 `{src}`"
 
 
 # ----------------------------------------------------------------------
-# Guard + scorecard bus
+# Guard + bus du scorecard
 # ----------------------------------------------------------------------
 def require_data():
-    """Pages 2–9 call this. Banner + st.stop() when data isn't loaded."""
+    """Appelée par les pages 2–9. Bannière + st.stop() si pas de données."""
     render_sidebar()
     if not st.session_state.get("data_ready"):
-        st.warning("👈 Load market data on the **Market Data** page first.")
+        st.warning("👈 Charge d'abord les données sur la page **Données de marché**.")
         st.stop()
 
 

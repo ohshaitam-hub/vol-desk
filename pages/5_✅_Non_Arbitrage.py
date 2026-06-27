@@ -1,0 +1,61 @@
+"""Page 5 · Non-arbitrage & densité risque-neutre — prouver que la surface est négociable."""
+import streamlit as st
+
+from utils.state import require_data, push_score
+from engine.data import surface_diagnostics, calendar_arbitrage
+from engine import viz
+
+st.set_page_config(layout="wide", page_title="Vol Desk", page_icon="📈")
+require_data()
+
+meta = st.session_state["meta"]
+surface = st.session_state["surface"]
+
+st.title("✅ Non-arbitrage & densité risque-neutre")
+st.markdown("Une surface n'est négociable que si elle est **sans arbitrage "
+            "statique** : la densité risque-neutre de Breeden–Litzenberger doit "
+            "rester non-négative (pas d'arbitrage papillon) et la variance totale "
+            "doit être non-décroissante en maturité (pas d'arbitrage calendaire).")
+
+diag = surface_diagnostics(surface, meta["r"])
+cal = calendar_arbitrage(surface)
+butterfly_ok = bool(diag["butterfly_ok"].all()) if len(diag) else False
+cal_viol = int(cal["violations"].sum()) if len(cal) else 0
+push_score(butterfly_ok=butterfly_ok, calendar_violations=cal_viol)
+
+c = st.columns(3)
+c[0].metric("Sans arbitrage papillon", "✅ Oui" if butterfly_ok else "❌ Non")
+c[1].metric("Violations calendaires", cal_viol)
+c[2].metric("RMSE moyen d'ajustement", f"{diag['fit_rmse'].mean()*100:.2f} pv" if len(diag) else "—")
+
+expiries = sorted(surface.keys())
+sel = st.multiselect("Échéances à tracer", expiries, default=expiries)
+st.plotly_chart(viz.risk_neutral_density(surface, meta, sel), use_container_width=True)
+
+st.subheader("Diagnostics par slice (Breeden–Litzenberger)")
+disp = diag.copy()
+disp["butterfly_ok"] = disp["butterfly_ok"].map({True: "✅", False: "❌"})
+disp = disp.rename(columns={"expiry_dte": "echeance_j", "n_quotes": "n_quotes",
+                            "fit_rmse": "rmse", "min_density": "densite_min",
+                            "butterfly_ok": "papillon_ok"})
+st.dataframe(disp.set_index("echeance_j"), use_container_width=True)
+
+st.subheader("Contrôle des spreads calendaires")
+if len(cal):
+    sty = cal.style.apply(
+        lambda row: ["background-color: rgba(240,97,122,0.25)" if row["violations"] > 0
+                     else "" for _ in row], axis=1)
+    st.dataframe(sty, use_container_width=True)
+else:
+    st.info("Il faut au moins deux échéances pour le contrôle calendaire.")
+
+with st.expander("💬 Ce qu'un recruteur demande ici"):
+    st.markdown(
+        "- **Breeden–Litzenberger ?** `f(K)=e^{rT}·∂²C/∂K²` — la dérivée seconde "
+        "du prix du call par rapport au strike *est* la densité risque-neutre. "
+        "Négative quelque part ⇒ un papillon vendable gratuitement.\n"
+        "- **Condition calendaire ?** La variance totale `w(k,T)` doit être "
+        "non-décroissante en T à chaque k, sinon un spread calendaire est un "
+        "arbitrage.\n"
+        "- **Pourquoi le prouver avant de trader ?** Des signaux de valeur "
+        "relative sur une surface qui arbitre n'ont aucun sens.")
