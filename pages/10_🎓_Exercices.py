@@ -1,173 +1,233 @@
-"""Page 10 · Exercices — questions aléatoires à résoudre en utilisant l'app.
+"""Page 10 · Exercices — vrais exercices de CALCUL (quant / desk options).
 
-Chaque exercice te dit quelle page ouvrir et quels réglages mettre ; tu lis le
-résultat dans l'app et tu saisis ta réponse. La bonne réponse est calculée par
-le **même moteur** que les autres pages (sur les **données actuellement
-chargées**), donc tout est cohérent et corrigé automatiquement.
+On te donne des données numériques ; tu appliques une formule et tu trouves le
+résultat (parité call-put, couverture delta, P&L gamma/vega, seuil de
+rentabilité du gamma, forward, log-moneyness, formule SVI, cotes
+Avellaneda–Stoikov…). La correction est automatique et la **méthode** est
+révélée après ta réponse — c'est un entraînement réutilisable (entretien quant,
+desk, mémoire).
 """
 import numpy as np
 import streamlit as st
 
 from utils.state import require_data, lesson
-from engine.core import bs_price, bs_greeks, svi_implied_vol
-from engine.strategy import (relative_value_screen, simulate_delta_hedged_pnl,
-                             avellaneda_stoikov_quotes)
-from engine.data import surface_diagnostics, calendar_arbitrage
+from engine.core import bs_price
 
 st.set_page_config(layout="wide", page_title="Vol Desk", page_icon="📈")
 require_data()
 
-meta = st.session_state["meta"]
-iv_panel = st.session_state["iv_panel"]
-surface = st.session_state["surface"]
-r, q, spot = meta["r"], meta["q"], meta["spot"]
-
-st.title("🎓 Exercices")
-st.markdown("Entraîne-toi : chaque exercice te fait **utiliser l'app** pour trouver "
-            "la réponse. Lis la consigne, va sur la page indiquée, règle les "
-            "contrôles, relève le résultat — puis vérifie ici.")
+st.title("🎓 Exercices de calcul")
+st.markdown("Des exercices où **tu calcules** un résultat à partir de données — pas "
+            "juste lire une valeur dans un onglet. Chaque correction révèle la "
+            "**formule** et le **calcul détaillé**.")
 
 lesson("""
 **Comment ça marche ?**
-1. Clique **🎲 Nouvel exercice** : une question aléatoire apparaît.
-2. La consigne te dit **quelle page** ouvrir (menu de gauche) et **quels réglages**
-   appliquer.
-3. Relève la valeur affichée par l'app, reviens ici, saisis ta réponse, clique
-   **✅ Vérifier**.
-4. La correction est **automatique** : la bonne réponse est calculée par le moteur sur
-   les **données actuellement chargées** (mêmes que celles affichées).
+1. Clique **🎲 Nouvel exercice** : un énoncé chiffré apparaît (toutes les données sont
+   dans l'énoncé — pas besoin d'aller ailleurs).
+2. Sors ta calculatrice, applique la bonne formule, trouve le résultat.
+3. Saisis ta réponse, clique **✅ Vérifier** : correction automatique + la **méthode
+   détaillée** s'affiche (formule + calcul).
+4. Le **score** se met à jour en haut.
 
-ℹ️ Pour les valeurs numériques, une **petite tolérance** est admise (arrondis).
-Le **score** se met à jour en haut.
+🎯 Ces calculs sont le b.a.-ba d'un desk options : parité, hedging, gamma scalping,
+sensibilités, SVI, market making. Utile pour un entretien quant comme pour ton mémoire.
 """)
 
+E = np.exp
+LN = np.log
+SQRT = np.sqrt
+
 
 # ----------------------------------------------------------------------
-# Générateurs d'exercices — chacun renvoie un dict (page, prompt, kind, answer…)
+# Générateurs : chacun renvoie (énoncé chiffré, réponse, tolérance, méthode)
 # ----------------------------------------------------------------------
-def g_price_greek(rng):
-    S = float(round(spot)); K = float(round(spot))
-    T = float(rng.choice([0.10, 0.25, 0.50, 1.00]))
-    sigma = float(rng.choice([0.15, 0.20, 0.25, 0.30]))
-    opt = str(rng.choice(["call", "put"]))
-    metric = str(rng.choice(["Prix", "Delta", "Vega", "Theta / jour"]))
-    if metric == "Prix":
-        a = float(bs_price(S, K, T, r, sigma, q, opt)); tol = max(0.5, 0.02 * abs(a))
+def g_forward(rng):
+    S = float(rng.choice([100, 150, 200, 300, 450, 500]))
+    r = float(rng.choice([0.02, 0.03, 0.045, 0.05]))
+    q = float(rng.choice([0.0, 0.01, 0.015, 0.02]))
+    T = float(rng.choice([0.25, 0.5, 1.0, 2.0]))
+    F = S * E((r - q) * T)
+    prompt = (f"**Prix forward.** Une action vaut `S = {S:.0f}`. Taux sans risque "
+              f"`r = {r:.3f}`, rendement dividende `q = {q:.3f}`, maturité "
+              f"`T = {T}` an.\n\n👉 Calcule le **prix forward** `F`.")
+    method = (f"`F = S·e^((r−q)·T) = {S:.0f}·e^(({r:.3f}−{q:.3f})·{T}) "
+              f"= {F:.4f}`")
+    return dict(prompt=prompt, answer=F, tol=max(0.05, 0.002 * F), unit="",
+                method=method, page="—")
+
+
+def g_logmon(rng):
+    F = float(rng.choice([100, 200, 300, 450, 500]))
+    K = float(np.round(F * rng.uniform(0.85, 1.15)))
+    k = LN(K / F)
+    prompt = (f"**Log-moneyness.** Prix forward `F = {F:.0f}`, strike `K = {K:.0f}`.\n\n"
+              f"👉 Calcule le **log-moneyness** `k = ln(K/F)` (4 décimales).")
+    method = f"`k = ln(K/F) = ln({K:.0f}/{F:.0f}) = {k:.4f}`"
+    return dict(prompt=prompt, answer=k, tol=0.004, unit="", method=method, page="—")
+
+
+def g_parity(rng):
+    S = float(rng.choice([100, 200, 300, 450]))
+    K = float(np.round(S * rng.uniform(0.92, 1.08)))
+    r = float(rng.choice([0.02, 0.03, 0.045]))
+    q = float(rng.choice([0.0, 0.01, 0.015]))
+    T = float(rng.choice([0.25, 0.5, 1.0]))
+    vol = float(rng.choice([0.18, 0.22, 0.28]))
+    C = float(round(bs_price(S, K, T, r, vol, q, "call"), 2))
+    P = C - S * E(-q * T) + K * E(-r * T)          # parité call-put (européenne)
+    prompt = (f"**Parité call-put.** Un **call** vaut `C = {C:.2f}` "
+              f"(`S = {S:.0f}`, `K = {K:.0f}`, `r = {r:.3f}`, `q = {q:.3f}`, "
+              f"`T = {T}`).\n\n👉 Quel est le prix du **put** de même strike et "
+              f"échéance ?")
+    method = (f"`P = C − S·e^(−qT) + K·e^(−rT)` "
+              f"`= {C:.2f} − {S:.0f}·e^(−{q:.3f}·{T}) + {K:.0f}·e^(−{r:.3f}·{T}) "
+              f"= {P:.4f}`")
+    return dict(prompt=prompt, answer=P, tol=max(0.05, 0.01 * abs(P)), unit="",
+                method=method, page="🎯 Valorisation & Grecques")
+
+
+def g_hedge_shares(rng):
+    N = int(rng.choice([50, 100, 200]))
+    typ = str(rng.choice(["call", "put"]))
+    delta = float(rng.choice([0.30, 0.45, 0.55, 0.65]))
+    if typ == "put":
+        delta = -float(rng.choice([0.30, 0.45, 0.55]))
+    pos = float(rng.choice([1, -1]))
+    pos_lbl = "long" if pos > 0 else "short"
+    shares = -(pos * N * delta)          # actions pour neutraliser le delta
+    prompt = (f"**Couverture en delta.** Tu es **{pos_lbl} {N} {typ}s** de "
+              f"delta `Δ = {delta:+.2f}` chacun.\n\n👉 Combien d'**actions** du "
+              f"sous-jacent faut-il détenir pour être **delta-neutre** ? "
+              f"(positif = acheter, négatif = vendre)")
+    method = (f"Delta du portefeuille d'options `= position×N×Δ = "
+              f"{pos:+.0f}×{N}×{delta:+.2f} = {pos*N*delta:+.1f}`. On détient "
+              f"l'opposé en actions : `{-(pos*N*delta):+.1f}`.")
+    return dict(prompt=prompt, answer=shares, tol=0.5, unit="actions",
+                method=method, page="🎯 Valorisation & Grecques")
+
+
+def g_gamma_pnl(rng):
+    N = int(rng.choice([10, 50, 100]))
+    pos = float(rng.choice([1, -1]))
+    pos_lbl = "long" if pos > 0 else "short"
+    gamma = float(rng.choice([0.01, 0.02, 0.04]))
+    dS = float(rng.choice([2, 3, 5, 8]))
+    pnl = 0.5 * pos * N * gamma * dS ** 2
+    prompt = (f"**P&L gamma.** Tu es **{pos_lbl} {N} options**, gamma `Γ = {gamma}` "
+              f"par option. Le sous-jacent bouge de `ΔS = {dS:.0f}`.\n\n"
+              f"👉 Estime le **P&L gamma** ≈ `½ · position · N · Γ · ΔS²`.")
+    method = (f"`½·{pos:+.0f}·{N}·{gamma}·{dS:.0f}² = {pnl:+.4f}`. "
+              f"(Long gamma gagne sur les mouvements ; short gamma perd.)")
+    return dict(prompt=prompt, answer=pnl, tol=max(0.05, 0.01 * abs(pnl)), unit="",
+                method=method, page="⚖️ P&L delta-couvert")
+
+
+def g_vega_pnl(rng):
+    V = float(rng.choice([0.3, 0.5, 1.2, 2.0]))
+    pos = float(rng.choice([1, -1]))
+    pos_lbl = "long" if pos > 0 else "short"
+    v0 = float(rng.choice([18, 20, 22]))
+    dv = float(rng.choice([-3, -2, 2, 3]))
+    v1 = v0 + dv
+    pnl = pos * V * dv
+    prompt = (f"**P&L vega.** Tu es **{pos_lbl}** un vega de `{V}` (par point de "
+              f"vol). La volatilité implicite passe de `{v0:.0f}%` à `{v1:.0f}%`.\n\n"
+              f"👉 Estime le **P&L vega** ≈ `position · vega · Δvol(points)`.")
+    method = (f"Δvol `= {v1:.0f}−{v0:.0f} = {dv:+.0f}` points. "
+              f"`P&L = {pos:+.0f}·{V}·{dv:+.0f} = {pnl:+.4f}`.")
+    return dict(prompt=prompt, answer=pnl, tol=max(0.05, 0.01 * abs(pnl)), unit="",
+                method=method, page="🎯 Valorisation & Grecques")
+
+
+def g_breakeven(rng):
+    theta = -float(rng.choice([0.05, 0.10, 0.20, 0.30]))   # theta/jour (long, <0)
+    gamma = float(rng.choice([0.01, 0.02, 0.04, 0.05]))
+    be = SQRT(-2 * theta / gamma)
+    prompt = (f"**Seuil de rentabilité du gamma (gamma scalping).** Une option "
+              f"**longue** delta-couverte a un `theta = {theta:.2f}` **par jour** "
+              f"et un `gamma = {gamma}`.\n\n👉 Quel **mouvement quotidien** `|ΔS|` du "
+              f"sous-jacent fait que le gain gamma compense exactement la perte "
+              f"theta ? (`½·Γ·ΔS² + θ_jour = 0`)")
+    method = (f"`|ΔS| = √(−2·θ_jour / Γ) = √(−2·({theta:.2f})/{gamma}) "
+              f"= {be:.4f}`. En dessous, le theta l'emporte (tu perds) ; au-dessus, "
+              f"le gamma paie.")
+    return dict(prompt=prompt, answer=be, tol=max(0.02, 0.01 * be), unit="",
+                method=method, page="⚖️ P&L delta-couvert")
+
+
+def g_vol_scaling(rng):
+    sigma = float(rng.choice([12, 16, 20, 25, 32]))
+    S = float(rng.choice([100, 200, 450, 500]))
+    ask = str(rng.choice(["daily_pct", "daily_move"]))
+    if ask == "daily_pct":
+        a = sigma / SQRT(252)
+        prompt = (f"**Mise à l'échelle de la volatilité.** La vol implicite "
+                  f"**annualisée** est `σ = {sigma:.0f}%`.\n\n👉 Quelle est la vol "
+                  f"**quotidienne** approximative ? (`σ / √252`, en %)")
+        method = f"`{sigma:.0f}% / √252 = {sigma:.0f}/15.87 = {a:.4f}%`"
+        unit = "%"
     else:
-        gk = bs_greeks(S, K, T, r, sigma, q, opt)
-        if metric == "Delta":
-            a = float(gk["delta"]); tol = 0.02
-        elif metric == "Vega":
-            a = float(gk["vega"]); tol = max(0.6, 0.03 * abs(a))
-        else:
-            a = float(gk["theta"]) / 365.0; tol = max(0.03, 0.06 * abs(a))
-    prompt = (f"**Page 🎯 Valorisation & Grecques.** Règle : `S={S:.0f}`, "
-              f"`K={K:.0f}`, `T={T}` an, `σ={sigma}`, type **{opt}** (garde `r` et "
-              f"`q` par défaut).\n\n👉 Quel est le **{metric}** affiché ?")
-    return dict(page="🎯 Valorisation & Grecques", prompt=prompt, kind="number",
-                answer=a, tol=tol, unit="")
+        a = S * (sigma / 100) / SQRT(252)
+        prompt = (f"**Mouvement quotidien attendu.** Action `S = {S:.0f}`, vol "
+                  f"annualisée `σ = {sigma:.0f}%`.\n\n👉 Quel **mouvement quotidien "
+                  f"en $** (1 écart-type) est attendu ? (`S·σ/√252`)")
+        method = f"`{S:.0f}·{sigma/100:.2f}/√252 = {a:.4f}`"
+        unit = "$"
+    return dict(prompt=prompt, answer=a, tol=max(0.01, 0.01 * a), unit=unit,
+                method=method, page="—")
 
 
-def g_vi_atm(rng):
-    dtes = sorted(iv_panel["expiry_dte"].unique())
-    dte = int(rng.choice(dtes))
-    g = iv_panel[iv_panel["expiry_dte"] == dte]
-    a = float(g.iloc[(g["log_moneyness"].abs()).argmin()]["iv"] * 100)
-    prompt = (f"**Page 📈 Volatilité implicite.** Choisis l'échéance **{dte} j** et "
-              f"lis la métrique **« VI ATM »**.\n\n👉 Quelle est sa valeur (en %) ?")
-    return dict(page="📈 Volatilité implicite", prompt=prompt, kind="number",
-                answer=a, tol=0.5, unit="%")
+def g_svi_eval(rng):
+    a = float(rng.choice([0.02, 0.04, 0.06]))
+    b = float(rng.choice([0.2, 0.3, 0.4]))
+    rho = float(rng.choice([-0.5, -0.3, -0.2]))
+    m = 0.0
+    sig = float(rng.choice([0.10, 0.15, 0.20]))
+    T = float(rng.choice([0.25, 0.5, 1.0]))
+    k = float(rng.choice([-0.10, 0.0, 0.10, 0.20]))
+    w = a + b * (rho * (k - m) + SQRT((k - m) ** 2 + sig ** 2))
+    vi = SQRT(max(w, 1e-10) / T) * 100
+    prompt = (f"**Formule SVI.** La variance totale est "
+              f"`w(k) = a + b·[ρ(k−m) + √((k−m)² + σ²)]` avec "
+              f"`a={a}`, `b={b}`, `ρ={rho}`, `m={m}`, `σ={sig}`, `T={T}`.\n\n"
+              f"👉 Calcule la **volatilité implicite** en `k = {k}` : "
+              f"`VI = √(w/T)` (en %).")
+    method = (f"`w = {a} + {b}·[{rho}·({k}) + √(({k})²+{sig}²)] = {w:.5f}` puis "
+              f"`VI = √({w:.5f}/{T}) = {vi/100:.5f} = {vi:.4f}%`")
+    return dict(prompt=prompt, answer=vi, tol=0.3, unit="%", method=method,
+                page="🌐 Surface de volatilité")
 
 
-def g_slice_count(rng):
-    dtes = sorted(iv_panel["expiry_dte"].unique())
-    dte = int(rng.choice(dtes))
-    a = int((iv_panel["expiry_dte"] == dte).sum())
-    prompt = (f"**Page 📈 Volatilité implicite.** Échéance **{dte} j** : lis la "
-              f"métrique **« Quotes dans la slice »**.\n\n👉 Combien y en a-t-il ?")
-    return dict(page="📈 Volatilité implicite", prompt=prompt, kind="number",
-                answer=a, tol=0.5, unit="")
+def g_as(rng):
+    s = float(rng.choice([50, 100, 200]))
+    inv = int(rng.choice([-10, -5, 5, 10]))
+    gamma = float(rng.choice([0.05, 0.1, 0.2]))
+    sig = float(rng.choice([0.15, 0.2, 0.3]))
+    tau = float(rng.choice([0.25, 0.5, 1.0]))
+    kappa = float(rng.choice([1.0, 1.5, 2.0]))
+    ask = str(rng.choice(["reservation", "spread"]))
+    if ask == "reservation":
+        a = s - inv * gamma * sig ** 2 * tau
+        prompt = (f"**Avellaneda–Stoikov — prix de réserve.** Mid `s = {s:.0f}`, "
+                  f"inventaire `q = {inv:+d}`, `γ = {gamma}`, `σ = {sig}`, temps "
+                  f"restant `τ = {tau}`.\n\n👉 Calcule le **prix de réserve** "
+                  f"`r = s − q·γ·σ²·τ`.")
+        method = (f"`r = {s:.0f} − ({inv:+d})·{gamma}·{sig}²·{tau} = {a:.5f}`. "
+                  f"(Inventaire long ⇒ réserve sous le mid pour se délester.)")
+    else:
+        a = gamma * sig ** 2 * tau + (2.0 / gamma) * LN(1 + gamma / kappa)
+        prompt = (f"**Avellaneda–Stoikov — fourchette optimale.** `γ = {gamma}`, "
+                  f"`σ = {sig}`, `τ = {tau}`, `κ = {kappa}`.\n\n👉 Calcule la "
+                  f"**fourchette** `δ = γ·σ²·τ + (2/γ)·ln(1 + γ/κ)`.")
+        method = (f"`δ = {gamma}·{sig}²·{tau} + (2/{gamma})·ln(1+{gamma}/{kappa}) "
+                  f"= {a:.5f}`")
+    return dict(prompt=prompt, answer=a, tol=max(0.005, 0.01 * abs(a)), unit="",
+                method=method, page="🏦 Tenue de marché")
 
 
-def g_svi_param(rng):
-    dte = int(rng.choice(sorted(surface)))
-    name = str(rng.choice(["b", "rho", "m", "sigma"]))
-    a = float(getattr(surface[dte]["params"], name))
-    prompt = (f"**Page 🌐 Surface de volatilité.** Dans le tableau **« Paramètres "
-              f"SVI ajustés »**, échéance **{dte} j**.\n\n👉 Quelle est la valeur du "
-              f"paramètre **{name}** ?")
-    return dict(page="🌐 Surface de volatilité", prompt=prompt, kind="number",
-                answer=a, tol=0.04, unit="")
-
-
-def g_rmse(rng):
-    dte = int(rng.choice(sorted(surface)))
-    a = float(surface[dte]["rmse"] * 100)
-    prompt = (f"**Page 🌐 Surface de volatilité.** Tableau des paramètres, colonne "
-              f"**`rmse_pv`**, échéance **{dte} j**.\n\n👉 Quelle est sa valeur "
-              f"(en points de vol) ?")
-    return dict(page="🌐 Surface de volatilité", prompt=prompt, kind="number",
-                answer=a, tol=0.15, unit="pv")
-
-
-def g_butterfly(rng):
-    diag = surface_diagnostics(surface, r)
-    ok = bool(diag["butterfly_ok"].all()) if len(diag) else False
-    prompt = ("**Page ✅ Non-arbitrage.** Regarde l'indicateur **« Sans arbitrage "
-              "papillon »**.\n\n👉 La surface est-elle sans arbitrage papillon ?")
-    return dict(page="✅ Non-arbitrage", prompt=prompt, kind="choice",
-                answer=("Oui" if ok else "Non"), choices=["Oui", "Non"])
-
-
-def g_calendar(rng):
-    cal = calendar_arbitrage(surface)
-    a = int(cal["violations"].sum()) if len(cal) else 0
-    prompt = ("**Page ✅ Non-arbitrage.** Lis la métrique **« Violations "
-              "calendaires »**.\n\n👉 Combien y en a-t-il au total ?")
-    return dict(page="✅ Non-arbitrage", prompt=prompt, kind="number",
-                answer=a, tol=0.5, unit="")
-
-
-def g_rv_count(rng):
-    z = float(rng.choice([1.0, 1.5, 2.0]))
-    which = str(rng.choice(["SELL_VOL", "BUY_VOL"]))
-    rv = relative_value_screen(iv_panel, surface, z_threshold=z)
-    a = int((rv["signal"] == which).sum())
-    label = "SELL_VOL (cher)" if which == "SELL_VOL" else "BUY_VOL (bon marché)"
-    prompt = (f"**Page 💎 Valeur relative.** Règle le **seuil z = {z}**.\n\n"
-              f"👉 Combien d'options sont signalées **{label}** ?")
-    return dict(page="💎 Valeur relative", prompt=prompt, kind="number",
-                answer=a, tol=0.5, unit="")
-
-
-def g_hedge_sign(rng):
-    dte = int(rng.choice(sorted(surface)))
-    s = surface[dte]; T, K = s["T"], s["forward"]
-    atm = float(svi_implied_vol(0.0, T, s["params"]))
-    iv_impl, iv_real = round(atm, 3), round(atm * 0.85, 3)
-    _, attr = simulate_delta_hedged_pnl(spot, K, T, r, q, iv_impl, iv_real,
-                                        option="call", position=-1.0,
-                                        n_steps=252, rehedge_every=1, seed=0)
-    a = "Positif" if attr["total_pnl"] >= 0 else "Négatif"
-    prompt = (f"**Page ⚖️ P&L delta-couvert.** Échéance **{dte} j**, strike **ATM**, "
-              f"type **call**, position **Short**, garde les autres valeurs par "
-              f"défaut.\n\n👉 Le **P&L total** est-il positif ou négatif ?")
-    return dict(page="⚖️ P&L delta-couvert", prompt=prompt, kind="choice",
-                answer=a, choices=["Positif", "Négatif"])
-
-
-def g_mm_reservation(rng):
-    inv = int(rng.choice([10, -10]))
-    a = "En-dessous du mid" if inv > 0 else "Au-dessus du mid"
-    prompt = (f"**Page 🏦 Tenue de marché.** Dans le tableau **« Asymétrie de "
-              f"cotation vs inventaire »**, pour un inventaire de **{inv:+d}**.\n\n"
-              f"👉 Le **prix de réserve** est-il au-dessus ou en-dessous du mid ?")
-    return dict(page="🏦 Tenue de marché", prompt=prompt, kind="choice",
-                answer=a, choices=["Au-dessus du mid", "En-dessous du mid"])
-
-
-GENERATORS = [g_price_greek, g_vi_atm, g_slice_count, g_svi_param, g_rmse,
-              g_butterfly, g_calendar, g_rv_count, g_hedge_sign, g_mm_reservation]
+GENERATORS = [g_forward, g_logmon, g_parity, g_hedge_shares, g_gamma_pnl,
+              g_vega_pnl, g_breakeven, g_vol_scaling, g_svi_eval, g_as]
 
 
 # ----------------------------------------------------------------------
@@ -194,22 +254,15 @@ if top[1].button("🎲 Nouvel exercice", use_container_width=True):
     st.rerun()
 
 ex = st.session_state["ex"]
-st.markdown(f"#### 🧩 Exercice n°{st.session_state['ex_counter']} "
-            f"— *{ex['page']}*")
+st.markdown(f"#### 🧩 Exercice n°{st.session_state['ex_counter']}")
 st.info(ex["prompt"])
 
 answered = st.session_state.get("ex_answered", False)
-if ex["kind"] == "number":
-    user = st.number_input("Ta réponse" + (f"  ({ex['unit']})" if ex["unit"] else ""),
-                           value=0.0, step=0.01, format="%.4f", disabled=answered)
-else:
-    user = st.radio("Ta réponse", ex["choices"], index=None, disabled=answered)
+user = st.number_input("Ta réponse" + (f"  ({ex['unit']})" if ex["unit"] else ""),
+                       value=0.0, step=0.01, format="%.4f", disabled=answered)
 
-if st.button("✅ Vérifier", disabled=answered or (ex["kind"] == "choice" and user is None)):
-    if ex["kind"] == "number":
-        ok = abs(float(user) - float(ex["answer"])) <= float(ex["tol"])
-    else:
-        ok = (user == ex["answer"])
+if st.button("✅ Vérifier", disabled=answered):
+    ok = abs(float(user) - float(ex["answer"])) <= float(ex["tol"])
     st.session_state["ex_total"] += 1
     if ok:
         st.session_state["ex_correct"] += 1
@@ -217,14 +270,14 @@ if st.button("✅ Vérifier", disabled=answered or (ex["kind"] == "choice" and u
     st.session_state["ex_result"] = ok
     st.rerun()
 
-if st.session_state.get("ex_answered"):
+if answered:
     ok = st.session_state.get("ex_result", False)
-    ans = ex["answer"]
-    ans_str = (f"{ans:.4g} {ex.get('unit','')}".strip()
-               if ex["kind"] == "number" else str(ans))
+    ans_str = f"{ex['answer']:.4f} {ex.get('unit','')}".strip()
     if ok:
-        st.success(f"✅ Correct ! Réponse attendue : **{ans_str}**.")
+        st.success(f"✅ Correct ! Réponse : **{ans_str}**.")
     else:
-        st.error(f"❌ Pas tout à fait. Réponse attendue : **{ans_str}** "
-                 f"(à relever sur la page **{ex['page']}**).")
+        st.error(f"❌ Pas tout à fait. Réponse attendue : **{ans_str}**.")
+    st.markdown(f"**📐 Méthode :** {ex['method']}")
+    if ex.get("page", "—") != "—":
+        st.caption(f"💡 Tu peux vérifier ce type de calcul sur la page **{ex['page']}**.")
     st.caption("Clique **🎲 Nouvel exercice** pour continuer.")
