@@ -107,3 +107,14 @@ def push_score(**kwargs):
 
 def get_score() -> dict:
     return dict(st.session_state.get("score", {}))
+
+
+def lesson(body: str, title: str = "📚 Comprendre cette page (mini-cours)",
+           expanded: bool = False):
+    """Encadré pédagogique repliable, homogène sur toutes les pages.
+
+    Explique en langage simple à quoi sert la page et définit les termes
+    techniques — pour pouvoir utiliser l'app sans bagage préalable.
+    """
+    with st.expander(title, expanded=expanded):
+        st.markdown(body)

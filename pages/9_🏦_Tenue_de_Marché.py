@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from utils.state import require_data, get_score
+from utils.state import require_data, get_score, lesson
 from engine.core import svi_implied_vol
 from engine.strategy import (avellaneda_stoikov_quotes, simulate_market_making,
                              relative_value_screen, vrp_monte_carlo)
@@ -23,6 +23,28 @@ st.markdown("Cotation optimale sensible à l'inventaire : le **prix de réserve*
             "pour se délester), et la **fourchette** s'élargit avec l'aversion au "
             "risque γ, la volatilité σ et l'horizon. Les arrivées d'ordres "
             "suivent `λ = A·e^(−κδ)`.")
+
+lesson("""
+**À quoi sert cette page ?**
+Jusqu'ici on **analysait**. Ici on simule le **métier de teneur de marché** (market
+maker) : celui qui affiche en permanence un prix auquel il **achète** (bid) et un prix
+auquel il **vend** (ask). Il gagne la petite différence (la **fourchette**) sur chaque
+échange, mais doit gérer son **stock** (l'**inventaire**) pour ne pas être trop exposé.
+
+Le modèle **Avellaneda–Stoikov** calcule les cotes optimales : il **décale** ses prix
+contre son inventaire (s'il a trop acheté, il baisse ses prix pour revendre) et
+**élargit** la fourchette quand le risque monte.
+
+**Les mots :**
+- **Teneur de marché** : fournit en continu des prix d'achat et de vente.
+- **Bid / Ask** : prix auquel il achète / vend ; **fourchette** = ask − bid.
+- **Inventaire** : son stock net (positif = il a acheté, négatif = il a vendu).
+- **Prix de réserve** : sa juste valeur ajustée de son inventaire.
+- **γ (aversion au risque)**, **κ (profondeur du marché)** : les leviers du modèle.
+
+**Bonus :** tout en bas, un **scorecard** récapitule les résultats clés de toutes les
+pages précédentes (surface, non-arbitrage, valeur relative, prime de variance).
+""")
 
 mid_dte = sorted(surface.keys())[len(surface) // 2]
 atm_sigma = float(svi_implied_vol(0.0, surface[mid_dte]["T"], surface[mid_dte]["params"]))

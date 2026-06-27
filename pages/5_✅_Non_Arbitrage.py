@@ -1,7 +1,7 @@
 """Page 5 · Non-arbitrage & densité risque-neutre — prouver que la surface est négociable."""
 import streamlit as st
 
-from utils.state import require_data, push_score
+from utils.state import require_data, push_score, lesson
 from engine.data import surface_diagnostics, calendar_arbitrage
 from engine import viz
 
@@ -16,6 +16,30 @@ st.markdown("Une surface n'est négociable que si elle est **sans arbitrage "
             "statique** : la densité risque-neutre de Breeden–Litzenberger doit "
             "rester non-négative (pas d'arbitrage papillon) et la variance totale "
             "doit être non-décroissante en maturité (pas d'arbitrage calendaire).")
+
+lesson("""
+**À quoi sert cette page ?**
+C'est le **contrôle qualité** de la surface. Avant de s'y fier, on vérifie qu'elle ne
+contient pas d'**incohérences** permettant de gagner de l'argent **sans risque** (un
+**arbitrage**). Si la surface « arbitre », tous les signaux des pages suivantes
+seraient faux.
+
+Deux contrôles :
+- **Arbitrage papillon** : on calcule la **densité risque-neutre** (les probabilités
+  implicites des futurs prix de l'action). Elle doit rester **positive** partout — une
+  probabilité négative est absurde et trahit un arbitrage.
+- **Arbitrage calendaire** : une option plus **lointaine** doit toujours contenir au
+  moins autant d'incertitude qu'une plus proche. Sinon, jouer l'une contre l'autre
+  serait de l'argent gratuit.
+
+**Les mots :**
+- **Arbitrage** : un gain sans risque (ne devrait pas exister sur un marché sain).
+- **Densité risque-neutre** : la distribution des futurs prix implicite dans les prix
+  d'options (méthode **Breeden–Litzenberger**).
+
+**Comment lire :** ✅ = sain (pas d'arbitrage), ❌ = problème. Sur données
+synthétiques, tout doit être ✅ et « 0 violation ».
+""")
 
 diag = surface_diagnostics(surface, meta["r"])
 cal = calendar_arbitrage(surface)

@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from utils.state import require_data
+from utils.state import require_data, lesson
 from engine.core import calibrate_svi, svi_implied_vol
 from engine import viz
 
@@ -18,6 +18,28 @@ st.title("🌐 Surface de volatilité (SVI)")
 st.markdown("Une slice raw-SVI `w(k)=a+b[ρ(k−m)+√((k−m)²+σ²)]` est calibrée par "
             "échéance (multi-départs L-BFGS-B). La surface 3D est **rotative et "
             "zoomable** — glisse pour orbiter, scrolle pour zoomer.")
+
+lesson("""
+**À quoi sert cette page ?**
+La page 3 montrait le smile d'**une seule** échéance. Ici on rassemble **toutes** les
+échéances en une seule **surface 3D** : la volatilité implicite pour chaque strike
+(largeur) et chaque maturité (profondeur). C'est la **carte de référence** du desk —
+tout le reste de l'app s'appuie dessus.
+
+Comme les points de marché sont bruités, on les **lisse** avec un modèle appelé
+**SVI** : 5 paramètres par échéance qui décrivent la forme du smile. Ajuster ces
+paramètres pour coller aux données, c'est la **calibration**.
+
+**Les mots :**
+- **Surface de volatilité** : la VI en fonction du strike *et* de la maturité, en 3D.
+- **SVI** : un modèle standard et parcimonieux (5 paramètres) pour décrire un smile.
+- **Calibration / fit** : régler les paramètres pour coller aux points de marché.
+- **RMSE** : l'erreur moyenne du fit (en *points de vol*) — plus c'est petit, mieux
+  le modèle colle.
+
+**Comment l'utiliser :** fais **tourner la surface 3D** à la souris. En dessous, le
+détail du fit par échéance (marché vs courbe SVI) et le tableau des paramètres.
+""")
 
 st.plotly_chart(viz.vol_surface_3d(surface, meta), use_container_width=True)
 

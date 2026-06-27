@@ -1,7 +1,7 @@
 """Page 3 · Volatilité implicite — inversion des prix marché et smiles bruts."""
 import streamlit as st
 
-from utils.state import require_data
+from utils.state import require_data, lesson
 from engine.core import implied_vol
 from engine import viz
 
@@ -16,6 +16,28 @@ st.title("📈 Volatilité implicite")
 st.markdown("Chaque prix mid coté est inversé en volatilité implicite Black–"
             "Scholes via un solveur de Brent robuste, puis tracé contre le "
             "log-moneyness `ln(K/F)` — le smile marché brut avant tout ajustement.")
+
+lesson("""
+**À quoi sert cette page ?**
+La page 2 allait du *prix → vol*. Ici on fait l'**inverse** : à partir du **prix de
+marché** d'une option, on retrouve la **volatilité implicite (VI)** — la volatilité
+que le marché « price » dans cette option.
+
+En traçant la VI pour tous les strikes d'une même échéance, on obtient une courbe : le
+**smile** (ou **skew** quand elle penche d'un côté). Sa forme raconte ce que le marché
+craint (souvent une chute → les options de protection sont plus chères).
+
+**Les mots :**
+- **Volatilité implicite (VI)** : la vol déduite du prix de marché de l'option.
+- **Log-moneyness `ln(K/F)`** : mesure si l'option est « à la monnaie » (≈ 0),
+  au-dessus (> 0) ou en-dessous (< 0). `K` = strike, `F` = prix *forward* (le prix
+  attendu de l'action à l'échéance).
+- **ATM (à la monnaie)** : strike ≈ prix de l'action.
+- **Smile / skew** : la forme de la courbe de VI selon le strike.
+
+**Comment l'utiliser :** choisis une échéance, observe le nuage de points (le smile).
+En bas, un mini-calculateur : entre un prix d'option → il te rend la VI correspondante.
+""")
 
 expiries = sorted(iv_panel["expiry_dte"].unique())
 dte = st.selectbox("Échéance (jours avant expiration)", expiries)

@@ -5,7 +5,7 @@ toutes les autres pages, et affiche les KPI de la surface comme « hero ».
 """
 import streamlit as st
 
-from utils.state import render_sidebar, load_data, source_badge
+from utils.state import render_sidebar, load_data, source_badge, lesson
 
 st.set_page_config(layout="wide", page_title="Vol Desk", page_icon="📈")
 
@@ -33,6 +33,36 @@ st.markdown(
     "**prime de risque de variance**, puis cote en **teneur de marché Avellaneda–"
     "Stoikov**. Yahoo Finance en direct si disponible, surface synthétique "
     "déterministe sinon — l'app tourne toujours.")
+
+lesson("""
+**C'est quoi tout ça, en une minute ?**
+
+Une **option** est un contrat qui donne le *droit* (pas l'obligation) d'acheter
+(**call**) ou de vendre (**put**) une action à un prix fixé d'avance (le **strike**)
+avant une date limite (l'**échéance**).
+
+Le prix d'une option dépend surtout de la **volatilité** attendue de l'action — à
+quel point elle risque de bouger. Plus le marché anticipe de gros mouvements, plus
+les options coûtent cher.
+
+Cette app est un **cockpit** qui, pour une action donnée :
+1. récupère les prix de ses options,
+2. en déduit la **volatilité implicite** (celle que le marché « price »),
+3. la résume en une **surface** 3D,
+4. vérifie qu'elle est cohérente (pas d'« argent gratuit »),
+5. repère les options mal cotées,
+6. et simule des stratégies de trading de volatilité.
+
+**Les mots de base :**
+- **Spot** : le prix actuel de l'action.
+- **Strike** : le prix d'exercice fixé dans l'option.
+- **Échéance / maturité** : la date limite de l'option.
+- **Call / Put** : droit d'acheter / droit de vendre.
+- **Volatilité** : l'ampleur des variations de prix attendues (en %).
+- **Volatilité implicite (VI)** : la volatilité déduite du prix de marché de l'option.
+
+👉 Chaque page à gauche zoome sur une étape, et a son propre mini-cours comme celui-ci.
+""", expanded=True)
 
 st.markdown(f"**Source des données :** {source_badge()}  ·  "
             f"arrêtée au `{meta['asof']:%Y-%m-%d %H:%M UTC}`")

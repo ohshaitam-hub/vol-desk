@@ -3,7 +3,7 @@ import numpy as np
 import streamlit as st
 from scipy.stats import skew as scipy_skew
 
-from utils.state import require_data, push_score
+from utils.state import require_data, push_score, lesson
 from engine.core import svi_implied_vol
 from engine.strategy import vrp_monte_carlo
 from engine import viz
@@ -20,6 +20,31 @@ st.markdown("Vendre la vol paie une prime — mais le payoff est **asymétrique 
             "négativement** : une moyenne positive avec une queue gauche épaisse "
             "(le rare blow-up de vol). Ce Monte Carlo tire une vol réalisée "
             "*stochastique* par trajectoire pour que la queue soit honnête.")
+
+lesson("""
+**À quoi sert cette page ?**
+La page 7 simulait **une** vente de vol. Ici on la rejoue **des milliers de fois**
+(**Monte Carlo**) avec des marchés aléatoires, pour voir la **distribution** des
+résultats — la vraie forme du risque.
+
+Le constat : vendre de la vol, c'est comme **vendre de l'assurance**. La plupart du
+temps on gagne un petit montant (la **prime**), mais de temps en temps survient une
+catastrophe (un pic de volatilité) qui fait perdre gros. D'où une **moyenne positive**
+mais une **queue gauche épaisse**.
+
+**Les mots :**
+- **Prime de risque de variance** : le surplus que paie en moyenne l'acheteur de
+  protection au vendeur de vol.
+- **Monte Carlo** : simuler des milliers de scénarios aléatoires pour estimer une
+  distribution.
+- **Queue (tail)** : les rares scénarios extrêmes (ici à gauche = grosses pertes).
+- **Asymétrie (skew)** négative : la distribution penche vers les pertes rares mais
+  fortes.
+
+**Comment lire :** la ligne verte = le gain **moyen** (positif). La ligne rouge = la
+perte dans les **5 % pires** cas. Un taux de réussite élevé + une queue gauche = la
+signature de la vente d'assurance.
+""")
 
 
 @st.cache_data(show_spinner=True)

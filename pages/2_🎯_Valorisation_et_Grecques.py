@@ -1,7 +1,7 @@
 """Page 2 · Valorisation & Grecques — pricer Black–Scholes interactif et intuition des Grecques."""
 import streamlit as st
 
-from utils.state import require_data
+from utils.state import require_data, lesson
 from engine.core import bs_price, bs_greeks
 from engine import viz
 
@@ -16,6 +16,24 @@ st.title("🎯 Valorisation & Grecques")
 st.markdown("Prix Black–Scholes en forme close et l'ensemble des Grecques. "
             "Bouge les contrôles — chaque graphique se recalcule en direct "
             "depuis `engine.core`.")
+
+lesson("""
+**À quoi sert cette page ?**
+À calculer le **prix « juste »** d'une option avec la formule de référence
+(**Black–Scholes**) et à visualiser ses **risques** — les « **Grecques** ».
+
+Les Grecques mesurent comment le prix de l'option réagit à chaque facteur :
+- **Delta** : de combien le prix de l'option bouge si l'action monte de 1 € (≈ ton
+  exposition à la direction).
+- **Gamma** : à quelle vitesse le Delta lui-même change (la « courbure »).
+- **Vega** : sensibilité à la **volatilité** (de combien si la vol monte de 1 point).
+- **Theta** : ce que l'option perd chaque **jour** qui passe (l'érosion du temps).
+- **Rho** : sensibilité aux **taux d'intérêt**.
+
+**Comment l'utiliser :** bouge les curseurs (spot, strike, maturité, vol) et regarde
+le prix et les Grecques se recalculer. Les graphiques montrent comment chaque Grecque
+évolue selon le prix de l'action.
+""")
 
 c = st.columns(6)
 S = c[0].slider("Spot S", float(0.5 * spot), float(1.5 * spot), float(spot))

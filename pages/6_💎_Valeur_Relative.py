@@ -1,7 +1,7 @@
 """Page 6 · Valeur relative — repérer les options chères/bon marché vs la surface."""
 import streamlit as st
 
-from utils.state import require_data, push_score
+from utils.state import require_data, push_score, lesson
 from engine.strategy import relative_value_screen
 from engine import viz
 
@@ -17,6 +17,28 @@ st.markdown("La VI marché de chaque option est comparée à la **VI juste** SVI
             "contrats au-delà du seuil sont signalés statistiquement **chers "
             "(vendre)** ou **bon marché (acheter)** — exactement le biais autour "
             "duquel un teneur de marché cote.")
+
+lesson("""
+**À quoi sert cette page ?**
+On a une surface « juste » et saine (pages 4–5). On s'en sert maintenant de
+**référence** : on compare le prix réel de chaque option à son **prix théorique**.
+Les options anormalement **chères** sont candidates à la **vente**, les **bon marché**
+à l'**achat**. C'est le cœur du trading de valeur relative.
+
+Pour décider de « anormalement », on standardise l'écart en **z-score** : combien
+d'écarts-types l'option est-elle loin de sa juste valeur. Au-delà d'un **seuil**, on
+la signale.
+
+**Les mots :**
+- **Valeur relative** : comparer un prix à une référence, pas dans l'absolu.
+- **Juste valeur (fair)** : le prix théorique donné par la surface SVI.
+- **Résidu** : l'écart entre VI marché et VI juste.
+- **z-score** : cet écart mesuré en nombre d'écarts-types (1.5 = déjà assez loin).
+- **SELL_VOL / BUY_VOL / FAIR** : signal *vendre* / *acheter* / *rien à signaler*.
+
+**Comment l'utiliser :** règle le **seuil z** (plus bas = plus de signaux). Points
+rouges = chers (vendre), verts = bon marché (acheter), gris = justes.
+""")
 
 z = st.slider("Seuil z", 0.5, 3.0,
               float(st.session_state.get("cfg_z_threshold", 1.5)), 0.1)

@@ -1,7 +1,7 @@
 """Page 7 · P&L delta-couvert — l'économie de la vente de vol et de la couverture delta."""
 import streamlit as st
 
-from utils.state import require_data
+from utils.state import require_data, lesson
 from engine.core import svi_implied_vol
 from engine.strategy import simulate_delta_hedged_pnl
 from engine import viz
@@ -18,6 +18,30 @@ st.markdown("On vend une option à sa vol **implicite**, puis on la couvre en de
             "pendant que le sous-jacent bouge réellement à la vol **réalisée**. "
             "Le short vol encaisse le theta et paie le gamma — net positif quand "
             "implicite > réalisée.")
+
+lesson("""
+**À quoi sert cette page ?**
+Quand on **vend** une option, on encaisse une prime mais on prend un **risque de
+direction** (si l'action bouge, on peut perdre). La **couverture en delta**
+(delta-hedge) consiste à acheter/vendre l'action en continu pour **annuler** ce risque
+de direction. Ce qui reste est un **pari pur sur la volatilité** : on gagne si l'action
+bouge **moins** que la vol à laquelle on a vendu l'option.
+
+La page simule ça pas à pas et décompose le résultat (la **cascade**) :
+- **Theta** : ce qu'on encaisse (le temps qui passe joue pour le vendeur).
+- **Gamma** : ce qu'on paie quand l'action bouge fort.
+- **Erreur de couverture** : le coût de se couvrir par à-coups plutôt qu'en continu.
+- **Total** : la somme — positif si la vol vendue (**implicite**) dépasse la vol
+  réellement subie (**réalisée**).
+
+**Les mots :**
+- **Couverture / hedge** : neutraliser un risque en prenant une position opposée.
+- **Delta-neutre** : portefeuille insensible aux petites variations de l'action.
+- **Short / Long** : vendeur / acheteur de l'option.
+
+**Comment l'utiliser :** mets « vol implicite » > « vol réalisée » et regarde le total
+devenir positif. La cascade montre d'où vient chaque euro.
+""")
 
 expiries = sorted(surface.keys())
 c = st.columns(6)
