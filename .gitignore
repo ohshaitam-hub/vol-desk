@@ -1,0 +1,13 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# OS / éditeurs
+.DS_Store
+~$*
+.claude/
+
+# Streamlit local
+.streamlit/secrets.toml
